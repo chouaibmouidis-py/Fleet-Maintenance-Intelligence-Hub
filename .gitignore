@@ -1,0 +1,15 @@
+# Environnement virtuel
+.venv/
+__pycache__/
+*.pyc
+
+# Éditeur et agents
+.agents/
+.vscode/
+.DS_Store
+
+# Fichiers bruts volumineux (> 100 Mo)
+*.csv
+
+# Clés et secrets Cloud
+*.json
