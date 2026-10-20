@@ -7,7 +7,7 @@ DATASET_ID = "fleet_warehouse"
 client = bigquery.Client(project=PROJECT_ID)
 
 print("=" * 70)
-print("📊 ÉTAPE 3 : COUCHE ANALYTIQUE ET BUSINESS INTELLIGENCE (BIGQUERY)")
+print("ÉTAPE 3 : COUCHE ANALYTIQUE ET BUSINESS INTELLIGENCE (BIGQUERY)")
 print("=" * 70)
 
 
@@ -18,7 +18,7 @@ def run_query(title: str, query: str) -> pd.DataFrame:
   return df
 
 
-# 1. Analyse financière : Coûts totaux et TCO par modèle de véhicule
+# 1. Analyse financière : les coûts totaux et TCO par modèle de véhicule
 q_tco = f"""
 SELECT 
     v.Vehicle_Type,
@@ -35,7 +35,7 @@ LIMIT 5;
 """
 run_query("1. Top 5 des modèles les plus coûteux en maintenance (TCO)", q_tco)
 
-# 2. Corrélation Télématique IoT & Pannes (Jointure stricte via record_id)
+# 2. Corrélation Télématique IoT & Pannes (Jointure via record_id)
 q_iot_correlation = f"""
 SELECT 
     m.Maintenance_Type,
