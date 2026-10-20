@@ -114,12 +114,14 @@ with tab1:
 
   with col_g2:
     fig_scatter = px.scatter(
-        df_fleet.sample(min(3000, len(df_fleet))),
+        df_fleet.sample(min(1500, len(df_fleet))),  # Échantillon fluide en SVG
         x="Vibration_Levels",
         y="Maintenance_Cost",
         color="Maintenance_Type",
-        render_mode="svg"
-        title="Impact des Vibrations sur les Coûts de Réparation (Échantillon)",
+        render_mode="svg",  
+        title=(
+            "Impact des Vibrations sur les Coûts de Réparation (Échantillon)"
+        ),
         labels={
             "Vibration_Levels": "Vibrations (mm/s)",
             "Maintenance_Cost": "Coût (€)",
