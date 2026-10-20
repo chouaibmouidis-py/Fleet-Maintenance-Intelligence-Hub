@@ -7,11 +7,11 @@ import streamlit as st
 
 st.set_page_config(
     page_title="Fleet Maintenance Intelligence Hub",
-    page_icon="🚛",
+    page_icon="🏎️",
     layout="wide",
 )
 
-st.title("🚛 Fleet Maintenance Intelligence Hub")
+st.title("🏎️ Fleet Maintenance Intelligence Hub")
 st.markdown(
     "*Système prédictif de maintenance de flotte.* "
 )
@@ -74,8 +74,8 @@ df_fleet = load_fleet_data()
 
 # Navigation par Onglets
 tab1, tab2, tab3 = st.tabs([
-    "📊 Tableau de Bord Flotte",
-    "🔮 Diagnostic & Prédiction Temps Réel",
+    "📈 Tableau de Bord Flotte",
+    "🧑‍💻 Diagnostic & Prédiction Temps Réel",
     "📂 Inférence & Ingestion par Lot",
 ])
 
@@ -171,8 +171,8 @@ with tab2:
         "Consommation (L/100km)", 5.0, 25.0, float(df_fleet["Fuel_Consumption"].median())
     )
 
-  if st.button("🚀 Calculer la prévision de maintenance", type="primary"):
-    # Reconstruction de la ligne d'inférence avec Feature Engineering strict
+  if st.button("🧮 Calculer la prévision de maintenance", type="primary"):
+    # Reconstruction de la ligne d'inférence avec Feature Engineering 
     sample = pd.DataFrame([{
         "Vehicle_Type": v_type,
         "Make_and_Model": v_model,
