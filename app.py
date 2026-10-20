@@ -118,6 +118,7 @@ with tab1:
         x="Vibration_Levels",
         y="Maintenance_Cost",
         color="Maintenance_Type",
+        render_mode="svg"
         title="Impact des Vibrations sur les Coûts de Réparation (Échantillon)",
         labels={
             "Vibration_Levels": "Vibrations (mm/s)",
