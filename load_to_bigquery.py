@@ -71,6 +71,6 @@ for table_name, job in active_jobs.items():
   )
 
 print(
-    "\n🎉 Ingestion BigQuery aux standards GCP Data Engineering terminée avec"
+    "\n💉 Ingestion BigQuery aux standards GCP Data Engineering terminée avec"
     " succès !"
 )
