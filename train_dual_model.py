@@ -8,7 +8,7 @@ from sklearn.model_selection import GroupKFold
 import xgboost as xgb
 
 print("=" * 75)
-print("🏆 ARCHITECTURE DUAL-MODEL KAGGLE : LIGHTGBM + XGBOOST (GROUP-KFOLD)")
+print("🏆 ARCHITECTURE DUAL-MODEL: LIGHTGBM + XGBOOST (GROUP-KFOLD)")
 print("=" * 75)
 
 # 1. Chargement des données Parquet
@@ -64,7 +64,7 @@ oof_xgb = np.zeros(len(df))
 lgb_models = []
 xgb_models = []
 
-print(f"\n🔄 Lancement du 5-Fold GroupKFold sans fuite de données...")
+print(f"\n🔄 Lancement du 5-Fold GroupKFold...")
 
 for fold, (train_idx, val_idx) in enumerate(gkf.split(X, y_log, groups)):
   print(f"\n--- Fold {fold + 1}/{N_SPLITS} ---")
