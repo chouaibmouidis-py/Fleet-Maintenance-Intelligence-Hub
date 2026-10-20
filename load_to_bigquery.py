@@ -53,7 +53,7 @@ for table_name, meta in tables_pipeline.items():
     raise FileNotFoundError(f"Fichier manquant : {file_path}")
 
   table_id = f"{PROJECT_ID}.{DATASET_ID}.{table_name}"
-  print(f"🚀 Ingestion optimisée (Parquet) pour '{table_name}'...")
+  print(f"Ingestion optimisée (Parquet) pour '{table_name}'...")
 
   with open(file_path, "rb") as source_file:
     load_job = client.load_table_from_file(
