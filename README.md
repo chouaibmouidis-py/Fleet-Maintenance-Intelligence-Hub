@@ -53,10 +53,10 @@ Le projet adopte les principes de l'Architecture Medallion (séparation stockage
 
 Résultats évalués sur 92 000 enregistrements en validation croisée 5-Fold (en euros réels) :
 
-| Modèle | MAE (€) | RMSE (€) | R² Score |
-| :--- | :---: | :---: | :---: |
-| LightGBM Seul | 284.27 € | 538.23 € | 0.8832 |
-| XGBoost Seul | 284.47 € | 538.43 € | 0.8831 |
+| Modèle                            | MAE (€)      | RMSE (€)     | R² Score   |
+| :---                              | :---:        | :---:        | :---:      |
+| LightGBM Seul                     | 284.27 €     | 538.23 €     | 0.8832     |
+| XGBoost Seul                      | 284.47 €     | 538.43 €     | 0.8831     |
 | **DUAL-MODEL BLEND (LGBM + XGB)** | **284.19 €** | **537.71 €** | **0.8835** |
 
 *Le modèle combiné surpasse les deux algorithmes individuels sur l'ensemble des métriques d'erreur.*
