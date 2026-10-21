@@ -7,8 +7,8 @@
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 [![License: Free](https://img.shields.io/badge/licence-Libre%20de%20droits-green.svg)](#-licence--conditions-dutilisation)
 
-Plateforme Cloud-Native d'analyse télématique et de maintenance prédictive pour flottes logistiques.  
-Pipeline ETL vers Google BigQuery, analyses SQL distribuées et architecture Dual-Model (LightGBM + XGBoost) validée par GroupKFold sans fuite de données.
+```Plateforme Cloud-Native d'analyse télématique et de maintenance prédictive pour flottes logistiques.  
+Pipeline ETL vers Google BigQuery, analyses SQL distribuées et architecture Dual-Model (LightGBM + XGBoost) validée par GroupKFold sans fuite de données.```
 
 ---
 
@@ -22,6 +22,10 @@ Le projet adopte les principes de l'Architecture Medallion (séparation stockage
 * **Analytique SQL (`analytics_bigquery.py`)** : Calcul du TCO, signatures de capteurs et détection d'anomalies par Window Functions.
 * **Machine Learning (`train_dual_model.py`)** : Validation 5-Fold GroupKFold étanche sur Vehicle_ID, cible log1p, ensemble Dual-Model (LightGBM + XGBoost).
 * **Application Web (`app.py`)** : Dashboard opérationnel, simulateur d'incident et inférence par lot sous Streamlit.
+
+[Données IoT CSV] ──(clean_data.py)──► [Parquet Snappy] ──(load_to_bigquery.py)──► [BigQuery Gold]
+                                                                                      │
+[Dashboard Streamlit] ◄──(app.py)── [Dual-Model Ensemble] ◄──(train_dual_model.py)────┘
 
 ---
 
@@ -84,6 +88,7 @@ gcloud config set project wise-aegis-512118-m6
 
 ### 3. Exécution de la chaîne complète
 ```bash
+
 # 1. Nettoyage et génération des tables Parquet
 uv run python clean_data.py
 
