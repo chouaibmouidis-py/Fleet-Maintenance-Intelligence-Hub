@@ -8,8 +8,8 @@
 [![License: Free](https://img.shields.io/badge/licence-Libre%20de%20droits-green.svg)](#-licence--conditions-dutilisation)
 
 ```Plateforme Cloud-Native d'analyse télématique et de maintenance prédictive pour flottes logistiques.  
-Pipeline ETL vers Google BigQuery, analyses SQL distribuées et architecture Dual-Model (LightGBM + XGBoost) validée par GroupKFold sans fuite de données.```
-
+Pipeline ETL vers Google BigQuery, analyses SQL distribuées et architecture Dual-Model (LightGBM + XGBoost) validée par GroupKFold sans fuite de données.
+```
 ---
 
 ## 🏗️ Architecture du Système
