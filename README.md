@@ -1,134 +1,92 @@
-# 🚛 Fleet Maintenance Intelligence Hub
+# Fleet Maintenance Intelligence Hub
 
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
-[![Google BigQuery](https://img.shields.io/badge/cloud-Google%20BigQuery-4285F4.svg)](https://cloud.google.com/bigquery)
-[![LightGBM](https://img.shields.io/badge/ML-LightGBM-brightgreen.svg)](https://lightgbm.readthedocs.io/)
-[![XGBoost](https://img.shields.io/badge/ML-XGBoost-red.svg)](https://xgboost.readthedocs.io/)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
-[![License: Free](https://img.shields.io/badge/licence-Libre%20de%20droits-green.svg)](#-licence--conditions-dutilisation)
+A portfolio prototype for fleet maintenance cost analysis, combining CSV preparation, BigQuery analytics, LightGBM/XGBoost models and a local Streamlit interface.
 
-```Plateforme Cloud-Native d'analyse télématique et de maintenance prédictive pour flottes logistiques.  
-Pipeline ETL vers Google BigQuery, analyses SQL distribuées et architecture Dual-Model (LightGBM + XGBoost) validée par GroupKFold sans fuite de données.
-```
----
+The prediction target is `Maintenance_Cost`. This is a cost estimation experiment, not a validated system for predicting when a vehicle will fail or require maintenance.
 
-## 🏗️ Architecture du Système
+## Implemented workflow
 
-Le projet adopte les principes de l'Architecture Medallion (séparation stockage, calcul distribué et inférence) :
+| Script | Responsibility | Input and output |
+|---|---|---|
+| `clean_data.py` | Remove duplicate rows, parse maintenance dates and split records | Source CSV → three local Parquet files |
+| `load_to_bigquery.py` | Upload Parquet files using BigQuery load jobs | Local Parquet → three tables in `fleet_warehouse` |
+| `analytics_bigquery.py` | Run maintenance cost, sensor and anomaly queries | BigQuery tables → printed results |
+| `train_dual_model.py` | Train and evaluate two regressors with five vehicle-grouped folds | Local Parquet → `fleet_dual_model.joblib` |
+| `app.py` | Display fleet metrics and run interactive or batch inference | Local Parquet and model artifact → Streamlit interface |
 
-* **Données Brutes** : Relevés IoT et historique d'interventions (CSV).
-* **Couche Silver (`clean_data.py`)** : Normalisation, typage strict des dates et export Apache Parquet (compression Snappy).
-* **Couche Gold (`load_to_bigquery.py`)** : Ingestion BigQuery asynchrone en mémoire constante O(1), tables clusterisées par Vehicle_ID et Maintenance_Type.
-* **Analytique SQL (`analytics_bigquery.py`)** : Calcul du TCO, signatures de capteurs et détection d'anomalies par Window Functions.
-* **Machine Learning (`train_dual_model.py`)** : Validation 5-Fold GroupKFold étanche sur Vehicle_ID, cible log1p, ensemble Dual-Model (LightGBM + XGBoost).
-* **Application Web (`app.py`)** : Dashboard opérationnel, simulateur d'incident et inférence par lot sous Streamlit.
+**The training script and dashboard read local files, not BigQuery.** BigQuery analytics and local modelling are separate branches. No scheduler, deployment pipeline or cloud-hosted application is provided by these scripts.
 
-[Données IoT CSV] ──(clean_data.py)──► [Parquet Snappy] ──(load_to_bigquery.py)──► [BigQuery Gold]
-                                                                                      │
-[Dashboard Streamlit] ◄──(app.py)── [Dual-Model Ensemble] ◄──(train_dual_model.py)────┘
+Preparation creates `record_id` from the DataFrame index and extracts a vehicle dimension plus maintenance and telemetry records. The identifier depends on the source ordering; it is not a stable business identifier. Invalid maintenance dates become missing values through `errors="coerce"`.
 
----
+## BigQuery behaviour
 
-## ⚡ Points Clés d'Ingénierie
+The loader creates a dataset in the EU location and uses `WRITE_TRUNCATE` to replace each destination table. Clustering is configured; time partitioning is not.
 
-### 1. Data Engineering & Cloud (Google BigQuery)
-* **Ingestion en Mémoire Constante O(1)** : streaming direct des fichiers Parquet vers l'API BigQuery sans chargement lourd en mémoire vive.
-* **Idempotence & Résilience** : création automatique du dataset en région UE (`exists_ok=True`) et réécriture contrôlée (`WRITE_TRUNCATE`) pour interdire les doublons.
-* **Stockage Optimisé (Clustering)** : indexation physique des tables selon Vehicle_ID et Maintenance_Type pour accélérer les requêtes d'analyse.
+Replacing tables avoids appending the same input repeatedly, but the three replacements do not form an atomic publication. A failed load can leave tables from different executions. Existing destination data is overwritten.
 
-### 2. Feature Engineering Physique
-* **`Load_Ratio = Actual_Load / Load_Capacity`** : surveillance des surcharges mécaniques destructrices.
-* **`Usage_Intensity = Usage_Hours / (Vehicle_Age + 1)`** : détection de l'usure anormale par rapport à l'âge du camion.
-* **`Fuel_Per_Ton = Fuel_Consumption / (Actual_Load + 1)`** : rendement énergétique réel par tonne transportée.
-* *Validation expérimentale* : `Load_Ratio` et `Usage_Intensity` figurent directement dans le **Top 5 des variables les plus importantes** du modèle.
+The SQL covers maintenance expenditure, sensor averages and global temperature z-scores. Maintenance expenditure alone is not total cost of ownership. The query labelled `Avg_Cost_Per_Vehicle` averages maintenance records rather than first aggregating per vehicle. A date filter in the script does not establish partition pruning, because the loader does not configure partitioning.
 
-### 3. Machine Learning (Standards Kaggle)
-* **Zéro Fuite de Données (Data Leakage)** : découpage 5-Fold GroupKFold groupé strictement par Vehicle_ID. Aucun camion du jeu de test n'apparaît dans le jeu d'entraînement.
-* **Stabilisation Logarithmique** : cible entraînée sur `log1p(Maintenance_Cost)` pour modérer l'impact des pannes extrêmes, puis inversée via `expm1()`.
-* **Ensembling Dual-Model** : combinaison pondérée 50/50 des prédictions de LightGBM (division par feuilles) et XGBoost (arbres par histogrammes avec support catégoriel natif).
+## Modelling and validation
 
----
+- Target transformation: `log1p(Maintenance_Cost)`.
+- Features include vehicle attributes, sensor readings, maintenance type and derived load, fuel and usage ratios.
+- Five-fold `GroupKFold`, grouped by `Vehicle_ID`, separates vehicles between training and validation within each fold.
+- LightGBM uses validation-based early stopping; XGBoost uses a fixed 400 estimators.
+- The saved artifact contains the five models from each family, feature names, categorical columns, weights and blend metrics.
 
-## 📊 Benchmark Comparatif des Modèles (Out-Of-Fold)
+Grouping prevents the same vehicle from appearing on both sides of a fold. It does **not** establish that all features were available before a maintenance decision. In particular, the timing of `Maintenance_Type`, `Failure_History` and `Anomalies_Detected` requires investigation. The evaluation is not a chronological forecast backtest.
 
-Résultats évalués sur 92 000 enregistrements en validation croisée 5-Fold (en euros réels) :
+### Previously reported results
 
-| Modèle                            | MAE (€)      | RMSE (€)     | R² Score   |
-| :---                              | :---:        | :---:        | :---:      |
-| LightGBM Seul                     | 284.27 €     | 538.23 €     | 0.8832     |
-| XGBoost Seul                      | 284.47 €     | 538.43 €     | 0.8831     |
-| **DUAL-MODEL BLEND (LGBM + XGB)** | **284.19 €** | **537.71 €** | **0.8835** |
+The previous README reported the following five-fold results on 92,000 records. They are retained as historical results, not independently reproduced benchmarks. The source dataset's currency must be verified before treating errors as euros.
 
-*Le modèle combiné surpasse les deux algorithmes individuels sur l'ensemble des métriques d'erreur.*
+| Model | MAE, target units | RMSE, target units | R² |
+|---|---:|---:|---:|
+| LightGBM | 284.27 | 538.23 | 0.8832 |
+| XGBoost | 284.47 | 538.43 | 0.8831 |
+| Equal-weight blend | 284.19 | 537.71 | 0.8835 |
 
----
+**Evaluation and application blending currently differ:** the training script blends the two models' predictions after `expm1`, whereas the application averages fold predictions and blends in log space before `expm1`. The reported blend metrics therefore do not directly evaluate the application's prediction rule.
 
-## 🚀 Installation & Reproduction
+Other limitations include a fixed reference year of 2024 for vehicle age, no persisted dependency lockfile, no independently held-out final evaluation, and no automated checks for join cardinality or equality of maintenance/telemetry vehicle identifiers. Feature importance and small blend improvements do not establish operational benefit.
 
-Ce projet s'exécute avec le gestionnaire d'environnement `uv` sous Python 3.12.
+## Running the prototype
 
-### 1. Préparation de l'environnement
+Run commands from the repository root. Python 3.12 was used in the original setup. Dependencies below are unpinned; this is a starting environment, not a verified reproducible lockfile.
+
 ```bash
-git clone https://github.com/ton-profil/fleet_analytics.git
-cd fleet_analytics
-
-# Création et activation de l'environnement virtuel
+git clone https://github.com/chouaibmouidis-py/Fleet-Maintenance-Intelligence-Hub.git
+cd Fleet-Maintenance-Intelligence-Hub
 uv venv --python 3.12
-source .venv/bin/activate
-
-# Installation des dépendances
-uv pip install google-cloud-bigquery google-cloud-bigquery-storage pyarrow db-dtypes "cryptography<49" lightgbm xgboost scikit-learn joblib streamlit plotly
+uv pip install pandas numpy pyarrow google-cloud-bigquery google-cloud-bigquery-storage db-dtypes lightgbm xgboost scikit-learn joblib streamlit plotly
 ```
 
-### 2. Authentification Google Cloud (ADC)
+Provide `logistics_dataset_with_maintenance_required.csv` at the repository root to rebuild the Parquet files. The raw CSV is not included among the tracked files reviewed. The project also contains prepared Parquet files and a serialized model; their presence does not replace source provenance or a reproducible training environment.
+
+Local preparation, training and UI:
+
+```bash
+uv run --no-project python clean_data.py
+uv run --no-project python train_dual_model.py
+uv run --no-project streamlit run app.py
+```
+
+For the optional BigQuery branch, configure your own Google Cloud project, enable BigQuery, grant the required permissions and use Application Default Credentials. Replace the hard-coded `PROJECT_ID` in both BigQuery scripts before running them. These operations can incur charges and replace destination tables.
+
 ```bash
 gcloud auth application-default login
-gcloud config set project wise-aegis-512118-m6
+uv run --no-project python load_to_bigquery.py
+uv run --no-project python analytics_bigquery.py
 ```
 
-### 3. Exécution de la chaîne complète
-```bash
+## Priorities before operational use
 
-# 1. Nettoyage et génération des tables Parquet
-uv run python clean_data.py
+1. Establish dataset provenance, licence, units and the intended prediction time.
+2. Validate input schemas, keys, joins and feature availability.
+3. Use one shared feature and prediction implementation for training and inference.
+4. Re-evaluate with a baseline and a held-out period matching the intended use.
+5. Pin dependencies, parameterise configuration and add publication safeguards.
 
-# 2. Ingestion Cloud vers Google BigQuery
-uv run python load_to_bigquery.py
+## Reuse and data rights
 
-# 3. Calcul des métriques SQL et Z-Scores
-uv run python analytics_bigquery.py
-
-# 4. Entraînement du Dual-Model Ensemble
-uv run python train_dual_model.py
-
-# 5. Démarrage de l'interface Streamlit
-uv run streamlit run app.py
-```
-
----
-
-## 🔮 Roadmap : Version 2 (v2)
-
-La version actuelle (v1) constitue un socle complet et robuste. La version 2 (v2) se concentrera sur l'optimisation avancée des performances :
-
-- [ ] **Optimisation Bayésienne avec Optuna** :
-  * Recherche automatisée des hyperparamètres clés (`learning_rate`, `num_leaves`, `max_depth`, régularisations L1/L2).
-  * Optimisation dynamique du coefficient de fusion alpha entre LightGBM et XGBoost.
-- [ ] **Intégration d'un 3e Modèle (CatBoost)** :
-  * Intégration d'arbres symétriques (Oblivious Trees) et comparaison avec une couche de Stacking Ridge.
-- [ ] **Déploiement Conteneurisé (Docker + Cloud Run)** :
-  * Création d'une image Docker multi-stage pour héberger l'application Streamlit sur Google Cloud Run avec pipeline CI/CD GitHub Actions.
-- [ ] **Inférence Distribuée BigQuery ML** :
-  * Export des artefacts de modèle pour effectuer les prédictions directement en SQL au sein de BigQuery.
-
----
-
-## 📄 Licence & Conditions d'Utilisation
-
-**Ce projet est entièrement libre de droits et ouvert (Domaine Public / Unlicense).**  
-**Aucune licence n'est requise** : vous êtes totalement libre de copier, modifier, redistribuer ou intégrer ce code dans vos projets académiques, personnels ou commerciaux, sans restriction ni contrainte légale.
-
----
-
-**Auteur** : Chouaib MOUID  
-*Ingénieur Data & Analytics*
+The previous README declared the code public domain under the Unlicense. No standalone licence file was present in the reviewed tree; formalising that declaration remains a documentation task. That declaration does not establish reuse rights for the source dataset, prepared Parquet files or model training data. Dataset provenance and applicable terms must be established separately.
